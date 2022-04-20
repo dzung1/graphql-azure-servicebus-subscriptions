@@ -52,7 +52,6 @@ jobs:
           node-version: 16
           registry-url: https://registry.npmjs.org/
           scope: "@talema"
-      - run: echo "registry=https://npm.pkg.github.com/@talema" >> .npmrc
       - run: npm publish $(ls *servicebus*.tgz) --access public
         env:
           NODE_AUTH_TOKEN: ${{secrets.npm_token}}
