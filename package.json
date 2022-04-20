@@ -1,14 +1,15 @@
 {
     "private": true,
     "devDependencies": {
-      "concurrently": "^7.1.0",
-      "prettier": "^2.6.2",
-      "typescript": "^4.6.3"
+        "concurrently": "^7.1.0",
+        "prettier": "^2.6.2",
+        "typescript": "^4.6.3"
     },
     "scripts": {
-      "lint": "cd package/graphql-azure-servicebus-subscriptions && npm run lint",
-      "build:example": "cd examples && npm run build",
-      "build:package": "cd package/graphql-azure-servicebus-subscriptions && npm run build",
-      "start:example": "cd examples && npm run start"
-    }
-  }
+        "lint": "cd package/graphql-azure-servicebus-subscriptions && npm run lint",
+        "build:example": "cd examples && npm run build",
+        "build:package": "cd package/graphql-azure-servicebus-subscriptions && npm run build",
+        "start:example": "cd examples && npm run start"
+    },
+    "version": "0.1.0"
+}
