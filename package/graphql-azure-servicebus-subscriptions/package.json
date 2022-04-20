@@ -11,13 +11,13 @@
   },
   "homepage": "https://github.com/abdomohamed/graphql-azure-servicebus-subscriptions/tree/main/package/graphql-azure-servicebus-subscriptions#readme",
   "repository": {
-		"type": "git",
-		"url": "https://github.com/abdomohamed/graphql-azure-servicebus-subscriptions",
-		"directory": "package/graphql-azure-servicebus-subscriptions"
-	},
+    "type": "git",
+    "url": "https://github.com/abdomohamed/graphql-azure-servicebus-subscriptions",
+    "directory": "package/graphql-azure-servicebus-subscriptions"
+  },
   "type": "module",
   "name": "@talema/graphql-azure-servicebus-subscriptions",
-  "version": "0.1.1",
+  "version": "0.1.4",
   "main": "./dist/esm/ServiceBusPubSub.js",
   "types": "./dist/esm/ServiceBusPubSub.d.ts",
   "exports": {
