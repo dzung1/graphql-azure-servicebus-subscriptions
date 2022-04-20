@@ -1,0 +1,44 @@
+{
+  "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^5.19.0",
+    "@typescript-eslint/parser": "^5.19.0",
+    "concurrently": "^7.1.0",
+    "eslint": "^8.13.0",
+    "eslint-config-google": "^0.14.0",
+    "prettier": "^2.6.2",
+    "typescript": "^4.6.3"
+  },
+  "type": "module",
+  "name": "@atalema/graphql-azure-servicebus-subscriptions",
+  "version": "0.1.0",
+  "main": "./dist/esm/ServiceBusPubSub.js",
+  "types": "./dist/esm/ServiceBusPubSub.d.ts",
+  "exports": {
+    "import": "./dist/esm/ServiceBusPubSub.js",
+    "require": "./dist/cjs/ServiceBusPubSub.js"
+  },
+  "scripts": {
+    "build:esm": "tsc",
+    "build:cjs": "tsc --module commonjs --outDir dist/cjs",
+    "build": "concurrently 'npm:build:esm' 'npm:build:cjs'",
+    "prebuild": "npm run clean",
+    "watch": "tsc -w",
+    "lint": "eslint src/**/*.ts",
+    "lint:fix": "npm run lint -- --fix",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "clean": "del -Recurse -Force dist"
+  },
+  "keywords": [
+    "graphql",
+    "azure",
+    "servicebus",
+    "websockets"
+  ],
+  "author": "",
+  "license": "MIT",
+  "description": "A GraphQL subscription library using  Azure Service Bus topics as PubSub server",
+  "dependencies": {
+    "@azure/service-bus": "^7.5.1",
+    "graphql-subscriptions": "^2.0.0"
+  }
+}
