@@ -1,0 +1,60 @@
+# This workflow will run tests using node and then publish a package to GitHub Packages when a release is created
+# For more information see: https://help.github.com/actions/language-and-framework-guides/publishing-nodejs-packages
+
+name: Release
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: package/graphql-azure-servicebus-subscriptions
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 16
+      - name: Build
+        run: |
+          npm ci
+          npm run lint
+          npm run build
+          # add test later
+          # npm test
+          
+      - name: Package
+        run: |
+          npm version prerelease --preid-ci-$GITHUB_RUN_ID --no-git-tag-version
+          npm pack
+      
+      - name: Upload
+        uses: actions/upload-artifact@v2
+        with:
+          name: package-azureservicebus
+          path: "package/graphql-azure-servicebus-subscriptions/*.tgz"
+
+  publish-npm:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download (AzureServiceBus)
+        uses: actions/download-artifact@v2
+        with:
+          name: package-azureservicebus
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: 16
+          registry-url: https://registry.npmjs.org/
+          scope: "@talema"
+      - run: echo "registry=https://npm.pkg.github.com/@talema" >> .npmrc
+      - run: npm ci
+      - run: npm publish $(ls *servicebus*.tgz) --access public
+        env:
+          NODE_AUTH_TOKEN: ${{secrets.npm_token}}
