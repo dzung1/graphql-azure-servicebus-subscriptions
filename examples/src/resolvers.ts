@@ -1,4 +1,4 @@
-import  { ServiceBusPubSub, IServiceBusOptions }  from "@atalema/graphql-azure-servicebus-subscriptions";
+import  { ServiceBusPubSub, IServiceBusOptions }  from "@talema/graphql-azure-servicebus-subscriptions";
 import dotenv from "dotenv";
 
 dotenv.config();

@@ -10,7 +10,7 @@
     "typescript": "^4.6.3"
   },
   "type": "module",
-  "name": "@atalema/graphql-azure-servicebus-subscriptions",
+  "name": "@talema/graphql-azure-servicebus-subscriptions",
   "version": "0.1.0",
   "main": "./dist/esm/ServiceBusPubSub.js",
   "types": "./dist/esm/ServiceBusPubSub.d.ts",

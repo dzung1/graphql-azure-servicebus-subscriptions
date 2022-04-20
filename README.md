@@ -6,7 +6,7 @@ multiple subscription manager instances.
 
 ## Installation
 
-`npm install @atalema/graphql-azure-servicebus-subscriptions`
+`npm install @talema/graphql-azure-servicebus-subscriptions`
 
 
 
@@ -15,7 +15,7 @@ multiple subscription manager instances.
 
 ### Initializing the Azure ServiceBus pubsub client
 ```js
-import  { ServiceBusPubSub, IServiceBusOptions }  from "@atalema/graphql-azure-servicebus-subscriptions";
+import  { ServiceBusPubSub, IServiceBusOptions }  from "@talema/graphql-azure-servicebus-subscriptions";
 
 const options: IServiceBusOptions = {
   connectionString: process.env.SERVICEBUS_CONNECTION_STRING!,

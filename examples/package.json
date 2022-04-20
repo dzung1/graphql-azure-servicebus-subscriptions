@@ -16,10 +16,10 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "@atalema/graphql-azure-servicebus-subscriptions": "file:../package/graphql-azure-servicebus-subscriptions",
     "@graphql-tools/graphql-file-loader": "^7.3.10",
     "@graphql-tools/load": "^7.5.9",
     "@graphql-tools/schema": "^8.3.9",
+    "@talema/graphql-azure-servicebus-subscriptions": "file:../package/graphql-azure-servicebus-subscriptions",
     "apollo-server-core": "^3.6.7",
     "apollo-server-express": "^3.6.7",
     "dotenv": "^16.0.0",
