@@ -1,6 +1,6 @@
 {
   "name": "example-servicebus",
-  "version": "1.0.0",
+  "version": "0.1.3",
   "description": "A GraphQL example with wired up with ServiceBus as a subscription pub/sub",
   "main": "dist/index,js",
   "type": "module",
@@ -13,6 +13,12 @@
     "watch": "tsc -w",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
+  "homepage": "https://github.com/abdomohamed/graphql-azure-servicebus-subscriptions/tree/main/package/graphql-azure-servicebus-subscriptions#readme",
+  "repository": {
+		"type": "git",
+		"url": "https://github.com/abdomohamed/graphql-azure-servicebus-subscriptions",
+		"directory": "package/graphql-azure-servicebus-subscriptions"
+	},
   "author": "",
   "license": "MIT",
   "dependencies": {
