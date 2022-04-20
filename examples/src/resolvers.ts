@@ -3,8 +3,6 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
-console.log(process.env.SERVICEBUS_CONNECTION_STRING);
-
 const options: IServiceBusOptions = {
   connectionString: process.env.SERVICEBUS_CONNECTION_STRING!,
   topicName: process.env.SERVICEBUS_TOPIC!,
@@ -25,7 +23,7 @@ export const resolvers = {
   },
   Subscription: {
     configChanged: {
-      subscribe: () => serviceBusPubSub.asyncIterator(["ConfigUpdate2", "ConfigUpdate1", "ConfigUpdate3"])
+      subscribe: () => serviceBusPubSub.asyncIterator(["ConfigUpdate2", "ConfigUpdate1"])
     }
   },
 };
