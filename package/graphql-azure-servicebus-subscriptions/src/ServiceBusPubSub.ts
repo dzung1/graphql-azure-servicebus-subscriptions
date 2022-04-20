@@ -1,12 +1,19 @@
-import {ProcessErrorArgs, ServiceBusClient, ServiceBusMessage, ServiceBusReceivedMessage, ServiceBusReceiver, ServiceBusSender} from "@azure/service-bus";
-import {PubSubEngine} from "graphql-subscriptions";
+import {
+  ProcessErrorArgs,
+  ServiceBusClient,
+  ServiceBusMessage,
+  ServiceBusReceivedMessage,
+  ServiceBusReceiver,
+  ServiceBusSender,
+} from "@azure/service-bus";
+import { PubSubEngine } from "graphql-subscriptions";
 
 /**
- * Internal type for storing relationship between fired event and subscribed client handler. 
+ * Internal type for storing relationship between fired event and subscribed client handler.
  */
 type SubscriptionInfo = {
-    onMessage: (message: ServiceBusReceivedMessage) => void;
-    eventName: string;
+  onMessage: (message: ServiceBusReceivedMessage) => void;
+  eventName: string;
 };
 
 /**
@@ -19,10 +26,10 @@ type SubscriptionInfo = {
  *                                     To enable message channeling when the message get published, the ServiceBusPubSub would applicationAttribute called eventName, this would be the eventName from the publish method.
  */
 export interface IServiceBusOptions {
-    connectionString: string,
-    topicName: string,
-    subscriptionName: string,
-    filterEnabled: boolean
+  connectionString: string;
+  topicName: string;
+  subscriptionName: string;
+  filterEnabled: boolean;
 }
 
 /**
@@ -30,109 +37,143 @@ export interface IServiceBusOptions {
  */
 
 export class ServiceBusPubSub extends PubSubEngine {
-    private client: ServiceBusClient;
-    private handlerMap = new Map<number, SubscriptionInfo>();
-    private senderMap =  new Map<string, ServiceBusSender>();
-    private receiverMap =  new Map<string, ServiceBusReceiver>();
-    private closeHandlerMap = new Map<number, {close() : Promise<void>} >();
-    private options: IServiceBusOptions;
-    private eventNameKey: string = "sub.eventName";  
+  private client: ServiceBusClient;
+  private handlerMap = new Map<number, SubscriptionInfo>();
+  private senderMap = new Map<string, ServiceBusSender>();
+  private receiverMap = new Map<string, ServiceBusReceiver>();
+  private closeHandlerMap = new Map<number, { close(): Promise<void> }>();
+  private options: IServiceBusOptions;
+  private eventNameKey: string = "sub.eventName";
 
-    constructor(options: IServiceBusOptions) {
-        super();
-        this.options = options;
-        this.client = new ServiceBusClient(this.options.connectionString);
+  constructor(options: IServiceBusOptions) {
+    super();
+    this.options = options;
+    this.client = new ServiceBusClient(this.options.connectionString);
+  }
+
+  /**
+   * Publish update message to the Azure ServiceBus topic. The publish method would create ServiceBusSender to publish events to the configured topic.
+   * The wrap the passed payload in a  ServiceBusMessage or it can accept ServiceBusMessage.
+   * The publish method would enrich final ServiceBusMessage with extra attribute subs.eventName,
+   * it would have the value of the eventName published. This attribute would be used to filter events sent to the connected clients.
+   * @property {string} eventName - the event name that backend GraphQL API would publish. This field would be attached to the published ServiceBusMessage
+   * @property {T | ServiceBusMessage} payload - the event payload it could be any type or ServiceBusMessage
+   * @property {attributes | Map<string, any>} - the extra attributes client can send part of the final published ServiceBusMessage
+   */
+  public publish<T>(
+    eventName: string,
+    payload: T,
+    attributes?: Map<string, any>
+  ): Promise<void>;
+  public publish(
+    eventName: string,
+    payload: ServiceBusMessage,
+    attributes?: Map<string, any>
+  ): Promise<void>;
+  publish(
+    eventName: string,
+    payload: any,
+    attributes?: Map<string, any>
+  ): Promise<void> {
+    let sender = this.client.createSender(this.options.topicName);
+    this.senderMap.set(eventName, sender);
+
+    if (this.isServiceBusMessage(payload)) {
+      this.enrichMessage(
+        new Map<string, any>([[this.eventNameKey, eventName]]),
+        <ServiceBusMessage>payload
+      );
+      return sender.sendMessages(<ServiceBusMessage>payload);
     }
 
-    /**
-     * Publish update message to the Azure ServiceBus topic. The publish method would create ServiceBusSender to publish events to the configured topic. 
-     * The wrap the passed payload in a  ServiceBusMessage or it can accept ServiceBusMessage. 
-     * The publish method would enrich final ServiceBusMessage with extra attribute subs.eventName, 
-     * it would have the value of the eventName published. This attribute would be used to filter events sent to the connected clients. 
-     * @property {string} eventName - the event name that backend GraphQL API would publish. This field would be attached to the published ServiceBusMessage 
-     * @property {T | ServiceBusMessage} payload - the event payload it could be any type or ServiceBusMessage
-     * @property {attributes | Map<string, any>} - the extra attributes client can send part of the final published ServiceBusMessage
-     */
-    public publish <T>(eventName: string, payload: T, attributes?: Map<string, any>): Promise<void>;
-    public publish (eventName: string, payload: ServiceBusMessage, attributes?: Map<string, any>): Promise<void>; 
-    publish (eventName: string, payload: any, attributes?: Map<string, any>): Promise<void> {
-        let sender =  this.client.createSender(this.options.topicName);
-        this.senderMap.set(eventName, sender);
-       
-        if(this.isServiceBusMessage(payload)) {
-            this.enrichMessage(new Map<string, any>([[this.eventNameKey, eventName]]), <ServiceBusMessage> payload)
-            return sender.sendMessages(<ServiceBusMessage>payload);
+    const internalMassage: ServiceBusMessage = {
+      body: payload,
+      applicationProperties: { [this.eventNameKey]: eventName },
+    };
+    return sender.sendMessages(internalMassage);
+  }
+
+  private enrichMessage(
+    attributes: Map<string, any>,
+    message: ServiceBusMessage
+  ) {
+    attributes.forEach((value, key) => {
+      if (message.applicationProperties == undefined) return;
+      if (key === this.eventNameKey) return;
+      message.applicationProperties[key] = value;
+    });
+  }
+
+  /**
+   * Subscribe to a specific event updates. The subscribe method would create a ServiceBusReceiver to listen to all the published events.
+   * The method internally would filter out all the received events that are not meant for this subscriber.
+   * @property {eventName | string} - published event name
+   * @property {onMessage | Function} - client handler for processing received events.
+   * @returns {Promise<number>} - returns the created identifier for the created subscription. It would be used to dispose/close any resources while unsubscribing.
+   */
+  subscribe(eventName: string, onMessage: Function): Promise<number> {
+    console.log(
+      `Trying to subscribe to {eventName: ${eventName}, topic: ${this.options.topicName}`
+    );
+    const receiver = this.client.createReceiver(
+      this.options.topicName,
+      this.options.subscriptionName
+    );
+
+    const processMessage = async (message: ServiceBusReceivedMessage) => {
+      const receivedMessageEventName =
+        message.applicationProperties?.[this.eventNameKey];
+
+      console.log(
+        `message.body: ${message.body}, eventName: ${receivedMessageEventName}`
+      );
+      if (this.options.filterEnabled) {
+        if (receivedMessageEventName === eventName) {
+          onMessage(message.body);
+          return;
         }
+        console.log(
+          `message ignored due to the filtration based on the eventName: ${eventName}`
+        );
+      } else {
+        onMessage(message.body);
+      }
+    };
 
-        const internalMassage : ServiceBusMessage = {
-            body: payload,
-            applicationProperties: {[this.eventNameKey]: eventName}
-        };
-        return sender.sendMessages(internalMassage);
-    }
+    const processError = async (args: ProcessErrorArgs) => {
+      console.log(
+        `Error occurred with ${args.entityPath} within ${args.fullyQualifiedNamespace}:`,
+        args.error
+      );
+    };
 
-    private enrichMessage(attributes:  Map<string, any>, message: ServiceBusMessage) {
-        attributes.forEach((value, key) => {
-            if(message.applicationProperties == undefined) return;
-            if(key === this.eventNameKey) return;
-            message.applicationProperties[key] = value;
-        });
-    }
+    var closePromise = receiver.subscribe({
+      processMessage: processMessage,
+      processError: processError,
+    });
 
-    /**
-     * Subscribe to a specific event updates. The subscribe method would create a ServiceBusReceiver to listen to all the published events. 
-     * The method internally would filter out all the received events that are not meant for this subscriber.
-     * @property {eventName | string} - published event name
-     * @property {onMessage | Function} - client handler for processing received events. 
-     * @returns {Promise<number>} - returns the created identifier for the created subscription. It would be used to dispose/close any resources while unsubscribing.
-     */  
-    subscribe(eventName: string, onMessage: Function): Promise<number> {
-        console.log(`Trying to subscribe to {eventName: ${eventName}, topic: ${this.options.topicName}`);
-        const receiver  = this.client.createReceiver(this.options.topicName, this.options.subscriptionName);
-        
-        const processMessage = async (message: ServiceBusReceivedMessage) => {
-            const receivedMessageEventName = message.applicationProperties?.[this.eventNameKey];
+    const id = Date.now() * Math.random();
+    this.handlerMap.set(id, {
+      onMessage: processMessage,
+      eventName: eventName,
+    });
+    this.closeHandlerMap.set(id, closePromise);
 
-            console.log(`message.body: ${message.body}, eventName: ${receivedMessageEventName}`);
-            if(this.options.filterEnabled) {
-                if(receivedMessageEventName === eventName) {
-                    onMessage(message.body);
-                    return;
-                }
-                console.log(`message ignored due to the filtration based on the eventName: ${eventName}`);
-            } else {
-                onMessage(message.body);
-            }
-        };
+    return Promise.resolve(id);
+  }
 
-        const processError = async (args: ProcessErrorArgs) => {
-            console.log(
-                `Error occurred with ${args.entityPath} within ${args.fullyQualifiedNamespace}:`, args.error
-            );
-        }
+  /**
+   * Unsubscribe method would close open connection with the ServiceBus for a specific event handler.
+   * @property {subId} - It's a unique identifier for each subscribed client.
+   */
+  async unsubscribe(subId: number) {
+    const info = this.handlerMap.get(subId) || undefined;
+    if (info === undefined) return;
+    await this.closeHandlerMap.get(subId)?.close();
+    this.handlerMap.delete(subId);
+  }
 
-        var closePromise = receiver.subscribe({processMessage: processMessage, processError: processError });
-
-        const id = Date.now() * Math.random();
-        this.handlerMap.set(id, {onMessage: processMessage, eventName: eventName});
-        this.closeHandlerMap.set(id, closePromise);
-
-        return Promise.resolve(id);
-    }
-
-    /**
-     * Unsubscribe method would close open connection with the ServiceBus for a specific event handler. 
-     * @property {subId} - It's a unique identifier for each subscribed client. 
-     */
-    async unsubscribe(subId: number) {
-        const info = this.handlerMap.get(subId) || undefined;
-        if( info === undefined)  return;
-        await this.closeHandlerMap.get(subId)?.close();
-        this.handlerMap.delete(subId);
-    }
-
-
-    private isServiceBusMessage(payload: any) : payload is ServiceBusMessage {
-        return (payload as ServiceBusMessage).body !== undefined;
-    }
+  private isServiceBusMessage(payload: any): payload is ServiceBusMessage {
+    return (payload as ServiceBusMessage).body !== undefined;
+  }
 }

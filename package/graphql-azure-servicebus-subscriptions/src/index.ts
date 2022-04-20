@@ -1,1 +1,1 @@
-export { ServiceBusPubSub, IServiceBusOptions } from "./ServiceBusPubSub"
+export { ServiceBusPubSub, IServiceBusOptions } from "./ServiceBusPubSub";
