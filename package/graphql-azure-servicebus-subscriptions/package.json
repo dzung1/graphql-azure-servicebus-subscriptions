@@ -27,7 +27,7 @@
     "lint": "eslint src/**/*.ts",
     "lint:fix": "npm run lint -- --fix",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "clean": "del -Recurse -Force dist"
+    "clean": "rm -rf dist"
   },
   "keywords": [
     "graphql",
