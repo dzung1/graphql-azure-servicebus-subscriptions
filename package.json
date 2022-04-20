@@ -11,5 +11,5 @@
         "build:package": "cd package/graphql-azure-servicebus-subscriptions && npm run build",
         "start:example": "cd examples && npm run start"
     },
-    "version": "0.1.5"
+    "version": "0.1.6"
 }
