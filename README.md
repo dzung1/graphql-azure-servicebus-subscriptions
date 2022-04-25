@@ -1,4 +1,5 @@
 # GraphQL Azure Service Bus Subscription Library
+[![Release](https://github.com/abdomohamed/graphql-azure-servicebus-subscriptions/actions/workflows/npm-publish.yml/badge.svg)](https://github.com/abdomohamed/graphql-azure-servicebus-subscriptions/actions/workflows/npm-publish.yml)
 
 This repo contains a PubSubEngine implementation using Azure ServiceBus as backend for working with the [Apollo GraphQL Subscription model](https://www.apollographql.com/docs/apollo-server/data/subscriptions).
 
