@@ -7,5 +7,12 @@ module.exports = {
   settings: {},
   extends: ["plugin:prettier/recommended"],
   plugins: ["@typescript-eslint"],
-  rules: {},
+  rules: {
+    "prettier/prettier": [
+      "error",
+      {
+        endOfLine: "auto",
+      },
+    ],
+  },
 };
