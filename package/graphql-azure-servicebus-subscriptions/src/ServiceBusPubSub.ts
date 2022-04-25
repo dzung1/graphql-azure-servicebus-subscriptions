@@ -7,6 +7,7 @@ import {
   ServiceBusSender,
 } from "@azure/service-bus";
 import { PubSubEngine } from "graphql-subscriptions";
+import { METHODS } from "http";
 
 /**
  * Internal type for storing relationship between fired event and subscribed client handler.
@@ -30,6 +31,7 @@ export interface IServiceBusOptions {
   topicName: string;
   subscriptionName: string;
   filterEnabled: boolean;
+  messageLabelKeyName: string;
 }
 
 /**
@@ -45,10 +47,11 @@ export class ServiceBusPubSub extends PubSubEngine {
   private options: IServiceBusOptions;
   private eventNameKey: string = "sub.eventName";
 
-  constructor(options: IServiceBusOptions) {
+  constructor(options: IServiceBusOptions, client?: ServiceBusClient) {
     super();
     this.options = options;
-    this.client = new ServiceBusClient(this.options.connectionString);
+    this.client = client || new ServiceBusClient(this.options.connectionString);
+    this.eventNameKey = this.options.messageLabelKeyName || this.eventNameKey;
   }
 
   /**
@@ -75,15 +78,24 @@ export class ServiceBusPubSub extends PubSubEngine {
     payload: any,
     attributes?: Map<string, any>
   ): Promise<void> {
-    let sender = this.client.createSender(this.options.topicName);
+    const sender =
+      this.senderMap.get(eventName) ||
+      this.client.createSender(this.options.topicName);
+
     this.senderMap.set(eventName, sender);
 
     if (this.isServiceBusMessage(payload)) {
-      this.enrichMessage(
-        new Map<string, any>([[this.eventNameKey, eventName]]),
-        <ServiceBusMessage>payload
-      );
-      return sender.sendMessages(<ServiceBusMessage>payload);
+      const message = <ServiceBusMessage>payload;
+
+      if (message.applicationProperties == undefined) {
+        message.applicationProperties = { [this.eventNameKey]: eventName };
+      } else {
+        this.enrichMessage(
+          new Map<string, any>([[this.eventNameKey, eventName]]),
+          message
+        );
+      }
+      return sender.sendMessages(message);
     }
 
     const internalMassage: ServiceBusMessage = {
@@ -97,10 +109,16 @@ export class ServiceBusPubSub extends PubSubEngine {
     attributes: Map<string, any>,
     message: ServiceBusMessage
   ) {
+    if (message.applicationProperties == undefined)
+      message.applicationProperties = {};
+
     attributes.forEach((value, key) => {
-      if (message.applicationProperties == undefined) return;
-      if (key === this.eventNameKey) return;
-      message.applicationProperties[key] = value;
+      if (
+        message.applicationProperties !== undefined &&
+        message.applicationProperties?.[key] === undefined
+      ) {
+        message.applicationProperties[key] = value;
+      }
     });
   }
 
@@ -112,13 +130,14 @@ export class ServiceBusPubSub extends PubSubEngine {
    * @returns {Promise<number>} - returns the created identifier for the created subscription. It would be used to dispose/close any resources while unsubscribing.
    */
   subscribe(eventName: string, onMessage: Function): Promise<number> {
-    console.log(
-      `Trying to subscribe to {eventName: ${eventName}, topic: ${this.options.topicName}`
-    );
-    const receiver = this.client.createReceiver(
-      this.options.topicName,
-      this.options.subscriptionName
-    );
+    const receiver =
+      this.receiverMap.get(eventName) ||
+      this.client.createReceiver(
+        this.options.topicName,
+        this.options.subscriptionName
+      );
+
+    this.receiverMap.set(eventName, receiver);
 
     const processMessage = async (message: ServiceBusReceivedMessage) => {
       const receivedMessageEventName =
@@ -147,12 +166,12 @@ export class ServiceBusPubSub extends PubSubEngine {
       );
     };
 
-    var closePromise = receiver.subscribe({
+    const closePromise = receiver.subscribe({
       processMessage: processMessage,
       processError: processError,
     });
-
     const id = Date.now() * Math.random();
+
     this.handlerMap.set(id, {
       onMessage: processMessage,
       eventName: eventName,
@@ -175,5 +194,9 @@ export class ServiceBusPubSub extends PubSubEngine {
 
   private isServiceBusMessage(payload: any): payload is ServiceBusMessage {
     return (payload as ServiceBusMessage).body !== undefined;
+  }
+
+  private isIServiceBusOptions(payload: any): payload is IServiceBusOptions {
+    return (payload as IServiceBusOptions).subscriptionName !== undefined;
   }
 }

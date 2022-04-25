@@ -1,12 +1,28 @@
 {
   "devDependencies": {
+    "@istanbuljs/nyc-config-typescript": "^1.0.2",
+    "@types/chai": "^4.3.1",
+    "@types/chai-as-promised": "^7.1.5",
+    "@types/mocha": "^9.1.0",
+    "@types/node": "^17.0.25",
+    "@types/simple-mock": "^0.8.2",
+    "@types/sinon": "^10.0.11",
+    "@types/sinon-chai": "^3.2.8",
     "@typescript-eslint/eslint-plugin": "^5.19.0",
     "@typescript-eslint/parser": "^5.19.0",
+    "chai": "^4.3.6",
+    "chai-as-promised": "^7.1.1",
     "concurrently": "^7.1.0",
     "eslint": "^8.13.0",
     "eslint-config-prettier": "^8.5.0",
     "eslint-plugin-prettier": "^4.0.0",
+    "mocha": "^9.2.2",
+    "nyc": "^15.1.0",
     "prettier": "^2.6.2",
+    "simple-mock": "^0.8.0",
+    "sinon": "^13.0.2",
+    "sinon-chai": "^3.7.0",
+    "ts-node": "^10.7.0",
     "typescript": "^4.6.3"
   },
   "homepage": "https://github.com/abdomohamed/graphql-azure-servicebus-subscriptions/tree/main/package/graphql-azure-servicebus-subscriptions#readme",
@@ -15,9 +31,8 @@
     "url": "https://github.com/abdomohamed/graphql-azure-servicebus-subscriptions",
     "directory": "package/graphql-azure-servicebus-subscriptions"
   },
-  "type": "module",
   "name": "@talema/graphql-azure-servicebus-subscriptions",
-  "version": "0.1.4",
+  "version": "0.2.0",
   "main": "./dist/esm/ServiceBusPubSub.js",
   "types": "./dist/esm/ServiceBusPubSub.d.ts",
   "exports": {
@@ -28,12 +43,17 @@
     "build:esm": "tsc",
     "build:cjs": "tsc --module commonjs --outDir dist/cjs",
     "build": "concurrently 'npm:build:esm' 'npm:build:cjs'",
+    "buildw": "concurrently 'npm:build:esm' 'npm:build:cjs'",
+    "prebuildw": "npm run cleanw",
     "prebuild": "npm run clean",
     "watch": "tsc -w",
-    "lint": "eslint src/**/*.ts",
+    "lint": "eslint ./**/*.ts",
     "lint:fix": "npm run lint -- --fix",
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "clean": "rm -rf dist"
+    "clean": "rm -rf dist",
+    "cleanw": "del dist -Force -Recurse ",
+    "coverage": "nyc --reporter=html --reporter=text mocha src/test/**/*.ts",
+    "test": "npm run coverage && npm run lint",
+    "testonly": "mocha --reporter spec src/test/*.spec.ts"
   },
   "keywords": [
     "graphql",
@@ -41,7 +61,13 @@
     "servicebus",
     "websockets"
   ],
-  "author": "",
+  "author": "Abdelmawla Talema",
+  "contributors": [
+    {
+      "name": "Abdelmawla Talema",
+      "url": "https://github.com/abdomohamed"
+    }
+  ],
   "license": "MIT",
   "description": "A GraphQL subscription library using  Azure Service Bus topics as PubSub server",
   "dependencies": {
