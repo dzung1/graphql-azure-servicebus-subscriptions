@@ -58,13 +58,19 @@ const onMessage = (payload) => {
 const subscription = await pubsub.subscribe('nameChanged', onMessage);
 ```
 
+## Note
+The current version of the `ServiceBusPubSub` works with the Competing Consumer pattern. This means if there are (n) of the GraphQL server running theses instances will be competing on consuming notifications updates. 
+
+The new version to support publishing notification updates to all the GraphQL instances will be coming soon. 
+ 
+
 ## Contributing
 
 Contributions are welcome. Make sure to check the existing issues (including the closed ones) before requesting a feature, reporting a bug or opening a pull requests.
 
 For sending a PR follow:
 
-1. Fork it ()
+1. Fork it (https://github.com/abdomohamed/graphql-azure-servicebus-subscriptions)
 2. Create your feature branch (`git checkout -b my-new-feature`)
 3. Commit your changes (`git commit -am 'Add some feature'`)
 4. Push to the branch (`git push origin my-new-feature`)
