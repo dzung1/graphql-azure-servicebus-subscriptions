@@ -43,7 +43,7 @@ jobs:
           path: "package/graphql-azure-servicebus-subscriptions/*.tgz"
 
   publish-npm:
-    needs: build
+    needs: build-release
     runs-on: ubuntu-latest
     steps:
       - name: Download (AzureServiceBus)
