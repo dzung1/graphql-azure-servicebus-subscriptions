@@ -70,7 +70,7 @@ jobs:
       - uses: actions/setup-node@v3
         with:
           node-version: 16
-          scope: "@talema"
+          scope: "@abdomohamed"
           registry-url: https://npm.pkg.github.com
       - run: npm publish $(ls *servicebus*.tgz)
         env:
