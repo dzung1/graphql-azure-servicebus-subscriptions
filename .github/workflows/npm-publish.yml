@@ -1,13 +1,12 @@
 # This workflow will run tests using node and then publish a package to GitHub Packages when a release is created
 # For more information see: https://help.github.com/actions/language-and-framework-guides/publishing-nodejs-packages
 
-name: Release
+name: Publish a release
 
-# on:
-#   push:
-#     branches: [main]
-#   pull_request:
-#     branches: [main]
+on:
+  push:
+    tags:
+      - v* #version is cut
 
 jobs:
   build-release:
@@ -42,6 +41,70 @@ jobs:
           name: package-azureservicebus
           path: "package/graphql-azure-servicebus-subscriptions/*.tgz"
 
+
+  
+  build:
+    runs-on: ubuntu-latest
+    needs: build-release
+    steps:
+      - run: echo "tag=${GITHUB_REF##*/v}" >> $GITHUB_ENV
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        with:
+          tag_name: ${{ github.ref}}
+          draft: true
+          prerelease: false
+          body: |
+            Check the changelog: https://github.com/abdomohamed/packages/graphql-azure-servicebus-subscriptions/blob/main/CHANGELOG.md
+
+      - name: Download (AzureServiceBus)
+        uses: actions/download-artifact@v2
+        with:
+          name: package-azureservicebus
+
+      - name: Upload package to release
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }} # This pulls from the CREATE RELEASE step above, referencing it's ID to get its outputs object, which include a `upload_url`. See this blog post for more info: https://jasonet.co/posts/new-features-of-github-actions/#passing-data-to-future-steps
+          asset_path: "abdomohamed-graphql-azure-servicebus-subscriptions-${{ env.tag }}.tgz"
+          asset_name: "@abdomohamed/graphql-azure-servicebus-subscriptions-${{ env.tag }}.tgz"
+          asset_content_type: application/zip
+  
+      - run: echo ${{ steps.create_release.outputs.id }} >> release.txt
+      - name: Upload
+        uses: actions/upload-artifact@v2
+        with:
+          name: release_id
+          path: release.txt
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: release
+    steps:
+      - name: Download package
+        uses: actions/download-artifact@v2
+        with:
+          name: release_id
+      - run: echo "release_id=$(cat release.txt)" >> $GITHUB_ENV
+      - name: Publish release
+        uses: actions/github-script@v3
+        with:
+          github-token: ${{  github.token }}
+          script: |
+            github.repos.updateRelease({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              release_id: process.env.release_id,
+              draft: false
+            })
+  
   publish-npm:
     needs: build-release
     runs-on: ubuntu-latest
@@ -60,7 +123,8 @@ jobs:
           NODE_AUTH_TOKEN: ${{secrets.npm_token}}
   
   publish-github:
-    needs: publish-npm
+    name: "Publish to GitHub packages"
+    needs: build
     runs-on: ubuntu-latest
     steps:
       - name: Download (AzureServiceBus)
@@ -70,8 +134,9 @@ jobs:
       - uses: actions/setup-node@v3
         with:
           node-version: 16
-          scope: "@talema"
+          scope: "@abdomohamed"
           registry-url: https://npm.pkg.github.com
-      - run: npm publish $(ls *servicebus*.tgz)
+      - run: echo "registry=https://npm.pkg.github.com/@abdomohamed" >> .npmrc
+      - run: npm publish $(ls *servicebus*.tgz) --access public
         env:
           NODE_AUTH_TOKEN: ${{ github.token }} 
