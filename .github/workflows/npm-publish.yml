@@ -122,21 +122,21 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{secrets.npm_token}}
   
-  publish-github:
-    name: "Publish to GitHub packages"
-    needs: build
-    runs-on: ubuntu-latest
-    steps:
-      - name: Download (AzureServiceBus)
-        uses: actions/download-artifact@v2
-        with:
-          name: package-azureservicebus
-      - uses: actions/setup-node@v3
-        with:
-          node-version: 16
-          scope: "@abdomohamed"
-          registry-url: https://npm.pkg.github.com
-      - run: echo "registry=https://npm.pkg.github.com/@abdomohamed" >> .npmrc
-      - run: npm publish $(ls *servicebus*.tgz) --access public
-        env:
-          NODE_AUTH_TOKEN: ${{ github.token }} 
+  # publish-github:
+  #   name: "Publish to GitHub packages"
+  #   needs: build
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - name: Download (AzureServiceBus)
+  #       uses: actions/download-artifact@v2
+  #       with:
+  #         name: package-azureservicebus
+  #     - uses: actions/setup-node@v3
+  #       with:
+  #         node-version: 16
+  #         scope: "@abdomohamed"
+  #         registry-url: https://npm.pkg.github.com
+  #     - run: echo "registry=https://npm.pkg.github.com/@abdomohamed" >> .npmrc
+  #     - run: npm publish $(ls *servicebus*.tgz) --access public
+  #       env:
+  #         NODE_AUTH_TOKEN: ${{ github.token }} 
