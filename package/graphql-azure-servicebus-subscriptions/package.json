@@ -73,8 +73,5 @@
   "dependencies": {
     "@azure/service-bus": "^7.5.1",
     "graphql-subscriptions": "^2.0.0"
-  },
-  "publishConfig": {
-    "registry": "https://npm.pkg.github.com"
   }
 }
