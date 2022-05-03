@@ -42,23 +42,23 @@ jobs:
           name: package-azureservicebus
           path: "package/graphql-azure-servicebus-subscriptions/*.tgz"
 
-  publish-npm:
-    name: "Publish to NPM packages"
-    needs: build
-    runs-on: ubuntu-latest
-    steps:
-      - name: Download (AzureServiceBus)
-        uses: actions/download-artifact@v2
-        with:
-          name: package-azureservicebus
-      - uses: actions/setup-node@v3
-        with:
-          node-version: 16
-          registry-url: https://registry.npmjs.org/
-          scope: "@talema"
-      - run: npm publish $(ls *servicebus*.tgz) --access public
-        env:
-          NODE_AUTH_TOKEN: ${{secrets.npm_token}}
+  # publish-npm:
+  #   name: "Publish to NPM packages"
+  #   needs: build
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - name: Download (AzureServiceBus)
+  #       uses: actions/download-artifact@v2
+  #       with:
+  #         name: package-azureservicebus
+  #     - uses: actions/setup-node@v3
+  #       with:
+  #         node-version: 16
+  #         registry-url: https://registry.npmjs.org/
+  #         scope: "@talema"
+  #     - run: npm publish $(ls *servicebus*.tgz) --access public
+  #       env:
+  #         NODE_AUTH_TOKEN: ${{secrets.npm_token}}
   
   # publish-github:
   #   name: "Publish to GitHub packages"
