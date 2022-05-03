@@ -68,8 +68,8 @@ jobs:
         with:
           name: package-azureservicebus
 
-      - name: Upload package to release
       - run: ls
+      - name: Upload package to release
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ github.token }}
