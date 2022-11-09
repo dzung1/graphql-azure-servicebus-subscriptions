@@ -33,6 +33,7 @@ export const resolvers = {
   Subscription: {
     status: {
       resolve: (payload: any) => {
+        // Without this, it will return `payload.status`, instead of the actual payload object        
         return payload;
       },
       subscribe: withFilter(

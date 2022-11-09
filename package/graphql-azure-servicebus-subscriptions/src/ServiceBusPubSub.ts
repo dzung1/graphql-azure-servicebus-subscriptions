@@ -72,14 +72,13 @@ export class ServiceBusPubSub extends PubSubEngine {
   private async initalize() {
     // Create a new service bus subscription to be consumed by the current instance of the app
     // Once the app no longer listen to the subscription (app shutdown/scaled down/crash/etc),
-    // the subscription will be automatically deleted as specified in 'autoDeleteOnIdle'
+    // the subscription will be automatically deleted after the time specified in 'autoDeleteOnIdle'
     const subscriptionName = `${this.options.subscriptionNamePrefix}-${process.env.COMPUTERNAME}`;
-    // const sub = await this.adminClient.getSubscription(this.options.topicName, subscriptionName);
-    // console.log(sub);
+    // TODO: Make the following configurable
     const subscriptionOptions: CreateSubscriptionOptions = {
       autoDeleteOnIdle: 'PT5M',
       maxDeliveryCount: 10,
-      defaultMessageTimeToLive: 'PT5M',
+      defaultMessageTimeToLive: 'P1D',
     };
     try {
       await this.adminClient.createSubscription(this.options.topicName, subscriptionName, subscriptionOptions);
@@ -144,7 +143,8 @@ export class ServiceBusPubSub extends PubSubEngine {
   }
 
   /**
-   * Subscribe to a specific event updates. The subscribe method would create a ServiceBusReceiver to listen to all the published events.
+   * Subscribe to a specific event updates. The subscribe method add a new rjxs subscriptions,
+   * which will then be evaluated every time a event is received from the service bus.
    * The method internally would filter out all the received events that are not meant for this subscriber.
    * @property {eventName | string} - published event name
    * @property {onMessage | Function} - client handler for processing received events.
@@ -157,21 +157,21 @@ export class ServiceBusPubSub extends PubSubEngine {
       this.subject
         .pipe(
           filter(
-            (e) =>
-              (eventName && e.body[this.eventNameKey] === eventName) ||
+            event =>
+              (eventName && event.body[this.eventNameKey] === eventName) ||
               !eventName ||
               eventName === '*'
           ),
-          map((e) => e.body),
-          tap((e) => e)
+          map(event => event.body),
         )
-        .subscribe((event) => onMessage(event))
+        .subscribe(event => onMessage(event))
     );
     return id;
   }
 
   /**
-   * Unsubscribe method would close open connection with the ServiceBus for a specific event handler.
+   * Unsubscribe method would stop this gpl subscription from being evaluate further.
+   * The service bus lister will keep running to receive events to be evaluated by other existing gpl subscriptions.
    * @property {subId} - It's a unique identifier for each subscribed client.
    */
   async unsubscribe(subId: number) {
