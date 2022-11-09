@@ -2,15 +2,16 @@ import { gql } from 'apollo-server-express';
 
 export const typeDefs = gql`
 type Query {
-  hello: String!
+  publishTestEvents: String!
 }
 
 type Subscription {
-  configChanged: ConfigUpdate
+  status(id: String): Status
 }
 
-type ConfigUpdate {
-  Update: String
+type Status {
+  id: String
+  status: String
 }
 
 schema {
