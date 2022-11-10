@@ -6,7 +6,7 @@ type Query {
 }
 
 type Subscription {
-  status(id: String): Status
+  status(id: String!): Status
 }
 
 type Status {

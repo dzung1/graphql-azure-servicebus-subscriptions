@@ -1,4 +1,7 @@
-import  { ServiceBusPubSub, IServiceBusOptions }  from "@talema/graphql-azure-servicebus-subscriptions";
+import {
+  ServiceBusPubSub,
+  IServiceBusOptions,
+}  from "@talema/graphql-azure-servicebus-subscriptions";
 import dotenv from "dotenv";
 import { withFilter, ResolverFn } from 'graphql-subscriptions';
 
@@ -9,6 +12,12 @@ const options: IServiceBusOptions = {
   topicName: process.env.SERVICEBUS_TOPIC!,
   subscriptionName: `${process.env.SERVICEBUS_SUBSCRIPTION_NAME!}-${process.env.HOSTNAME || process.env.COMPUTERNAME}`,
   createSubscription: true,
+  // TODO: Make the following configurable
+  createSubscriptionOptions: {
+    autoDeleteOnIdle: 'PT5M',
+    defaultMessageTimeToLive: 'PT1H',
+    maxDeliveryCount: 10,    
+  }
 }
 
 export const serviceBusPubSub = new ServiceBusPubSub(options);

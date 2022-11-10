@@ -43,6 +43,19 @@ export interface IServiceBusOptions {
   subscriptionName: string;
   eventNameKey?: string;
   createSubscription: boolean;
+  createSubscriptionOptions: IServiceBusSubscriptionOptions | undefined;
+}
+
+/**
+ * Represents options for a new ServiceBus subscription
+ * @property {string} autoDeleteOnIdle - Max idle time before the subscription is deleted.
+ * @property {number} maxDeliveryCount - The maximum delivery count of messages after which if it is still not settled, gets moved to the dead-letter sub-queue.
+ * @property {string} defaultMessageTimeToLive - Determines how long a message lives in the subscription.
+ */
+export interface IServiceBusSubscriptionOptions {
+  autoDeleteOnIdle: string;
+  maxDeliveryCount: number;
+  defaultMessageTimeToLive: string;
 }
 
 /**
@@ -77,17 +90,19 @@ export class ServiceBusPubSub extends PubSubEngine {
   public async initialize() {
     // Create a new service bus subscription to be consumed by the current instance of the app
     // Once the app no longer listen to the subscription (app shutdown/scaled down/crash/etc),
-    // the subscription will be automatically deleted after the time specified in 'autoDeleteOnIdle'   
-
-    if (this.options.createSubscription) {
+    // the subscription will be automatically deleted after the time specified in 'autoDeleteOnIdle'
+    if (this.options.createSubscription && this.options.createSubscriptionOptions) {
       try {
-        // TODO: Make the following configurable
         const subscriptionOptions: CreateSubscriptionOptions = {
-          autoDeleteOnIdle: 'PT5M',
-          maxDeliveryCount: 10,
-          defaultMessageTimeToLive: 'P1D',
+          autoDeleteOnIdle: this.options.createSubscriptionOptions.autoDeleteOnIdle,
+          maxDeliveryCount: this.options.createSubscriptionOptions.maxDeliveryCount,
+          defaultMessageTimeToLive: this.options.createSubscriptionOptions.defaultMessageTimeToLive,
         };
-        await this.adminClient.createSubscription(this.options.topicName, this.options.subscriptionName, subscriptionOptions);
+        await this.adminClient.createSubscription(
+          this.options.topicName,
+          this.options.subscriptionName,
+          this.options.createSubscriptionOptions,
+        );
       } catch (err: any) {
         if (err.name === 'RestError' && err.statusCode == 409 && err.code === 'MessageEntityAlreadyExistsError') {
           // Service bus subscription already exist, can safely continue
