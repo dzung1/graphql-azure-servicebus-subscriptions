@@ -1,13 +1,14 @@
 import  { ServiceBusPubSub, IServiceBusOptions }  from "@talema/graphql-azure-servicebus-subscriptions";
 import dotenv from "dotenv";
-import { withFilter } from 'graphql-subscriptions';
+import { withFilter, ResolverFn } from 'graphql-subscriptions';
 
 dotenv.config();
 
 const options: IServiceBusOptions = {
   connectionString: process.env.SERVICEBUS_CONNECTION_STRING!,
   topicName: process.env.SERVICEBUS_TOPIC!,
-  subscriptionNamePrefix: process.env.SERVICEBUS_SUBSCRIPTION_NAME_PREFIX!,
+  subscriptionName: `${process.env.SERVICEBUS_SUBSCRIPTION_NAME!}-${process.env.HOSTNAME || process.env.COMPUTERNAME}`,
+  createSubscription: true,
 }
 
 export const serviceBusPubSub = new ServiceBusPubSub(options);

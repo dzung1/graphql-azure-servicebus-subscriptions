@@ -34,12 +34,15 @@ export interface IEventResult extends ServiceBusReceivedMessage, IEvent {
  * @property {string} connectionString - The ServiceBus connection string. This would be the Shared Access Policy connection string.
  * @property {string} topicName - This would be the topic where all the events will be published.
  * @property {string} subscriptionName - This would be the ServiceBus topic subscription name.
+ * @property {string} eventNameKey - Name of the field from the ServiceBus payload to use for top level filtering.
+ * @property {string} createSubscription - Control whether to create the ServiceBus subscription if it does not already exist.
  */
 export interface IServiceBusOptions {
   connectionString: string;
   topicName: string;
-  subscriptionNamePrefix: string;
+  subscriptionName: string;
   eventNameKey?: string;
+  createSubscription: boolean;
 }
 
 /**
@@ -62,37 +65,41 @@ export class ServiceBusPubSub extends PubSubEngine {
     this.eventNameKey = this.options.eventNameKey || this.eventNameKey;
     this.client = client || new ServiceBusClient(this.options.connectionString);
     this.adminClient = adminClient || new ServiceBusAdministrationClient(this.options.connectionString);
-    this.subject = new Subject<IEventResult>();    
-    this.sender = this.client.createSender(this.options.topicName);
+    this.subject = new Subject<IEventResult>();  
+    this.sender = this.client.createSender(this.options.topicName);  
+
+    // TODO: Perhaps the consumer of this pubsub should be reponsible for calling initialize?
     (async () => {
-      await this.initalize()
+      await this.initialize()
     })();
   }
 
-  private async initalize() {
+  public async initialize() {
     // Create a new service bus subscription to be consumed by the current instance of the app
     // Once the app no longer listen to the subscription (app shutdown/scaled down/crash/etc),
-    // the subscription will be automatically deleted after the time specified in 'autoDeleteOnIdle'
-    const subscriptionName = `${this.options.subscriptionNamePrefix}-${process.env.COMPUTERNAME}`;
-    // TODO: Make the following configurable
-    const subscriptionOptions: CreateSubscriptionOptions = {
-      autoDeleteOnIdle: 'PT5M',
-      maxDeliveryCount: 10,
-      defaultMessageTimeToLive: 'P1D',
-    };
-    try {
-      await this.adminClient.createSubscription(this.options.topicName, subscriptionName, subscriptionOptions);
-    } catch (err: any) {
-      if (err.name === 'RestError' && err.statusCode == 409 && err.code === 'MessageEntityAlreadyExistsError') {
-        // Service bus subscription already exist, can safely continue
-        console.log(err.message);
-      } else {
-        throw err;
+    // the subscription will be automatically deleted after the time specified in 'autoDeleteOnIdle'   
+
+    if (this.options.createSubscription) {
+      try {
+        // TODO: Make the following configurable
+        const subscriptionOptions: CreateSubscriptionOptions = {
+          autoDeleteOnIdle: 'PT5M',
+          maxDeliveryCount: 10,
+          defaultMessageTimeToLive: 'P1D',
+        };
+        await this.adminClient.createSubscription(this.options.topicName, this.options.subscriptionName, subscriptionOptions);
+      } catch (err: any) {
+        if (err.name === 'RestError' && err.statusCode == 409 && err.code === 'MessageEntityAlreadyExistsError') {
+          // Service bus subscription already exist, can safely continue
+          console.log(err.message);
+        } else {
+          throw err;
+        }
       }
-    }    
+    }
 
     const subscription = this.client
-      .createReceiver(this.options.topicName, subscriptionName)
+      .createReceiver(this.options.topicName, this.options.subscriptionName)
       .subscribe({
         processMessage: async (message: ServiceBusReceivedMessage) => {
           this.subject.next({
