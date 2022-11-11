@@ -12,6 +12,7 @@ const options: IServiceBusOptions = {
   topicName: process.env.SERVICEBUS_TOPIC!,
   subscriptionName: `${process.env.SERVICEBUS_SUBSCRIPTION_NAME!}-${process.env.HOSTNAME || process.env.COMPUTERNAME}`,
   createSubscription: true,
+  useCustomPropertyForEventName: false,
   // TODO: Make the following configurable
   createSubscriptionOptions: {
     autoDeleteOnIdle: 'PT5M',
