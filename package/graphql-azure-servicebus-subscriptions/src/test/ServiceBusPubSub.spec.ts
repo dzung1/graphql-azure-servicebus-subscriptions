@@ -7,6 +7,7 @@ import sinonChai from "sinon-chai";
 import { IServiceBusOptions, ServiceBusPubSub } from "../ServiceBusPubSub";
 import Simple, { spy, mock, Stub } from "simple-mock";
 import {
+  ServiceBusAdministrationClient,
   ServiceBusClient,
   ServiceBusMessage,
   ServiceBusReceiver,
@@ -22,11 +23,12 @@ chai.use(sinonChai);
 const expect = chai.expect;
 const assert = chai.assert;
 const options: IServiceBusOptions = {
+  connectionString: "",
   topicName: "topic",
   subscriptionName: "subs-name",
-  filterEnabled: true,
-  connectionString: "",
-  messageLabelKeyName: "key",
+  eventNameKey: "key",
+  useCustomPropertyForEventName: true,
+  createSubscription: false,
 };
 
 const fakeReceiver = new FakeMessageReceiver();
@@ -61,6 +63,31 @@ function getMockedServiceBusClient(
   return { client, senderMock, receiverMock };
 }
 
+function getMockedServiceBusAdminClient(
+  senderSpy: any,
+  fakeReceiver: any
+): {
+  client: ServiceBusAdministrationClient;
+  receiverMock: Stub<ServiceBusReceiver>;
+  senderMock: Stub<ServiceBusSender>;
+} {
+  const client = new ServiceBusAdministrationClient(
+    "Endpoint=sb://a;SharedAccessKeyName=b;SharedAccessKey=c;"
+  );
+
+  const senderMock = Simple.mock<ServiceBusClient>(
+    client,
+    "createSender"
+  ).returnWith(senderSpy);
+
+  const receiverMock = Simple.mock<ServiceBusClient>(
+    client,
+    "createReceiver"
+  ).returnWith(fakeReceiver);
+
+  return { client, senderMock, receiverMock };
+}
+
 describe("ServiceBusPubSub", () => {
   beforeEach("Reset state", () => {
     fakeReceiver.reset();
@@ -70,7 +97,8 @@ describe("ServiceBusPubSub", () => {
   it("can subscribe and is called when events happen", async () => {
     const ps = new ServiceBusPubSub(
       options,
-      getMockedServiceBusClient(fakeSender, fakeReceiver).client
+      getMockedServiceBusClient(fakeSender, fakeReceiver).client,
+      getMockedServiceBusAdminClient(fakeSender, fakeReceiver).client,
     );
 
     let subscribeCalled = false;
@@ -92,7 +120,8 @@ describe("ServiceBusPubSub", () => {
   it("Can ignore events not specified in the subscription", async () => {
     const ps = new ServiceBusPubSub(
       options,
-      getMockedServiceBusClient(fakeSender, fakeReceiver).client
+      getMockedServiceBusClient(fakeSender, fakeReceiver).client,
+      getMockedServiceBusAdminClient(fakeSender, fakeReceiver).client,
     );
 
     let subscribeCalled = false;
@@ -113,7 +142,8 @@ describe("ServiceBusPubSub", () => {
   it("will add eventName as an attribute to the ServiceBusMessage published", async () => {
     const ps = new ServiceBusPubSub(
       options,
-      getMockedServiceBusClient(fakeSender, fakeReceiver).client
+      getMockedServiceBusClient(fakeSender, fakeReceiver).client,
+      getMockedServiceBusAdminClient(fakeSender, fakeReceiver).client,
     );
 
     await ps.subscribe(data.eventName, (payload: any) => {});
@@ -128,8 +158,11 @@ describe("ServiceBusPubSub", () => {
 
   it("will subscribe once to the save event", async () => {
     const mocked = getMockedServiceBusClient(fakeSender, fakeReceiver);
-
-    const ps = new ServiceBusPubSub(options, mocked.client);
+    const ps = new ServiceBusPubSub(
+      options,
+      mocked.client,
+      getMockedServiceBusAdminClient(fakeSender, fakeReceiver).client,
+    );
 
     await ps.subscribe(data.eventName, (payload: any) => {});
     await ps.subscribe(data.eventName, (payload: any) => {});
@@ -139,8 +172,11 @@ describe("ServiceBusPubSub", () => {
 
   it("will create publisher for the eventName once", async () => {
     const mocked = getMockedServiceBusClient(fakeSender, fakeReceiver);
-
-    const ps = new ServiceBusPubSub(options, mocked.client);
+    const ps = new ServiceBusPubSub(
+      options,
+      mocked.client,
+      getMockedServiceBusAdminClient(fakeSender, fakeReceiver).client,
+    );
 
     await ps.publish(data.eventName, data.message);
     await ps.publish(data.eventName, data.message);
@@ -148,15 +184,18 @@ describe("ServiceBusPubSub", () => {
     expect(mocked.senderMock.callCount).to.eq(1);
   });
 
-  it("can subscribe to all messages if filterEnabled was false", async () => {
+  it("can subscribe to all messages if eventName is *", async () => {
     const mocked = getMockedServiceBusClient(fakeSender, fakeReceiver);
-    options.filterEnabled = false;
-    const ps = new ServiceBusPubSub(options, mocked.client);
+    const ps = new ServiceBusPubSub(
+      options,
+      mocked.client,
+      getMockedServiceBusAdminClient(fakeSender, fakeReceiver).client,
+    );
 
     let subscribeCalled = false;
     let receivedMessage = undefined;
 
-    await ps.subscribe("a", (_: any) => {
+    await ps.subscribe("*", (_: any) => {
       subscribeCalled = true;
       receivedMessage = _;
     });
@@ -170,13 +209,16 @@ describe("ServiceBusPubSub", () => {
 
   it("will not override message label used for channeling received events to the right client", async () => {
     const mocked = getMockedServiceBusClient(fakeSender, fakeReceiver);
-    options.filterEnabled = false;
-    options.messageLabelKeyName = "label";
-    const ps = new ServiceBusPubSub(options, mocked.client);
+    options.eventNameKey = "label";
+    const ps = new ServiceBusPubSub(
+      options,
+      mocked.client,
+      getMockedServiceBusAdminClient(fakeSender, fakeReceiver).client,
+    );
     const message: ServiceBusMessage = {
       body: "test message",
       applicationProperties: {
-        [options.messageLabelKeyName]: "1233",
+        [options.eventNameKey]: "1233",
       },
     };
 
@@ -189,9 +231,12 @@ describe("ServiceBusPubSub", () => {
 
   it("will enrich the published ServiceBusMessage with the label", async () => {
     const mocked = getMockedServiceBusClient(fakeSender, fakeReceiver);
-    options.filterEnabled = false;
-    options.messageLabelKeyName = "label";
-    const ps = new ServiceBusPubSub(options, mocked.client);
+    options.eventNameKey = "label";
+    const ps = new ServiceBusPubSub(
+      options,
+      mocked.client,
+      getMockedServiceBusAdminClient(fakeSender, fakeReceiver).client,
+    );
     const message: ServiceBusMessage = {
       body: "test message",
       applicationProperties: {},
@@ -206,9 +251,12 @@ describe("ServiceBusPubSub", () => {
 
   it("can unsubscribe if passed the right client identifier", async () => {
     const mocked = getMockedServiceBusClient(fakeSender, fakeReceiver);
-    options.filterEnabled = false;
-    options.messageLabelKeyName = "label";
-    const ps = new ServiceBusPubSub(options, mocked.client);
+    options.eventNameKey = "label";
+    const ps = new ServiceBusPubSub(
+      options,
+      mocked.client,
+      getMockedServiceBusAdminClient(fakeSender, fakeReceiver).client,
+    );
     const clientId = await ps.subscribe("a", (_: any) => {});
     let clientClosed: boolean = false;
 
@@ -216,14 +264,20 @@ describe("ServiceBusPubSub", () => {
       clientClosed = true;
     };
     await ps.unsubscribe(clientId);
-    expect(clientClosed).to.be.true;
+
+    // TODO: Unsubscribing will not cause the ServiceBus client to close
+    // Need to update this unit test case to check whether the appropriate rxjs subscription is removed
+    expect(clientClosed).to.be.false;
   });
 
   it("will skip unsubscribe for unknown client identifiers", async () => {
     const mocked = getMockedServiceBusClient(fakeSender, fakeReceiver);
-    options.filterEnabled = false;
-    options.messageLabelKeyName = "label";
-    const ps = new ServiceBusPubSub(options, mocked.client);
+    options.eventNameKey = "label";
+    const ps = new ServiceBusPubSub(
+      options,
+      mocked.client,
+      getMockedServiceBusAdminClient(fakeSender, fakeReceiver).client,
+    );
     await ps.subscribe("a", (_: any) => {});
     let clientClosed: boolean = false;
 
