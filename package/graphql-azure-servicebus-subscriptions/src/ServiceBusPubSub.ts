@@ -61,7 +61,6 @@ export interface IServiceBusSubscriptionOptions {
 /**
  * An override for the in-memory PubSubEngine which connects to the Azure ServiceBus.
  */
-
 export class ServiceBusPubSub extends PubSubEngine {
 
   private client: ServiceBusClient;
@@ -87,6 +86,9 @@ export class ServiceBusPubSub extends PubSubEngine {
     })();
   }
 
+   /**
+   * Create the ServiceBus subscription if required, and start listening to this ServiceBus subscription,
+   */
   public async initialize() {
     // Create a new service bus subscription to be consumed by the current instance of the app
     // Once the app no longer listen to the subscription (app shutdown/scaled down/crash/etc),
